@@ -696,115 +696,55 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<script src="js/storage.js"></script>
+<script src="js/escapeHtml.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/clock.js"></script>
+<script src="js/visitors.js"></script>
+<script src="js/likes.js"></script>
+<script src="js/guestbook.js"></script>
 <script>
     // ===== Clock =====
-    function updateClock() {
-        const now = new Date();
-        const iranTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tehran"}));
-        const hours = String(iranTime.getHours()).padStart(2, '0');
-        const minutes = String(iranTime.getMinutes()).padStart(2, '0');
-        document.getElementById('currentTime').textContent = `${hours}:${minutes}`;
-    }
     updateClock();
     setInterval(updateClock, 1000);
 
-    // ===== Toast =====
-    function showToast(message) {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
-    }
-
-    // ===== Local Storage helpers =====
-    function getData(key, defaultValue) {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : defaultValue;
-    }
-
-    function setData(key, value) {
-        localStorage.setItem(key, JSON.stringify(value));
-    }
-
     // ===== Visitor Counter =====
-    let visitors = getData('reza_visitors', 142);
-    const hasVisited = getData('reza_has_visited', false);
-    if (!hasVisited) {
-        visitors++;
-        setData('reza_visitors', visitors);
-        setData('reza_has_visited', true);
-    }
+    const visitors = initVisitors(getData, setData);
     document.getElementById('visitorCount').textContent = visitors;
 
     // ===== Like Counter =====
-    let likes = getData('reza_likes', 89);
+    const { likes, handleLikeClick } = initLikes(getData, setData, showToast);
     document.getElementById('likeCount').textContent = likes;
 
     document.getElementById('likeWidget').addEventListener('click', function() {
-        const hasLiked = getData('reza_has_liked', false);
-        if (!hasLiked) {
-            likes++;
-            setData('reza_likes', likes);
-            setData('reza_has_liked', true);
-            document.getElementById('likeCount').textContent = likes;
-            this.querySelector('.widget-value').textContent = 'ممنون! 💖';
-            showToast('لایکت ثبت شد! ❤️');
-        } else {
-            showToast('قبلاً لایک کردی! 😊');
-        }
+        const widgetValueEl = this.querySelector('.widget-value');
+        const likeCountEl = document.getElementById('likeCount');
+        handleLikeClick(widgetValueEl, likeCountEl);
     });
 
     // ===== Guestbook =====
-    let messages = getData('reza_messages', []);
+    const guestbook = createGuestbook(getData, setData, escapeHtml, showToast);
 
-    function renderMessages() {
-        const container = document.getElementById('messagesContainer');
-        document.getElementById('messageCount').textContent = messages.length;
-        
-        if (messages.length === 0) {
-            container.innerHTML = '<div class="no-messages">هنوز پیامی نیست. اولین نفر باش! 💫</div>';
-            return;
-        }
-
-        container.innerHTML = messages.slice().reverse().map(msg => `
-            <div class="message">
-                <div class="message-header">
-                    <span class="message-name">${escapeHtml(msg.name)}</span>
-                    <span class="message-time">${msg.time}</span>
-                </div>
-                <div class="message-text">${escapeHtml(msg.text)}</div>
-            </div>
-        `).join('');
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    function renderGuestbook() {
+        guestbook.renderMessages(
+            document.getElementById('messagesContainer'),
+            document.getElementById('messageCount')
+        );
     }
 
     document.getElementById('guestbookForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        const name = document.getElementById('guestName').value.trim();
-        const text = document.getElementById('guestMessage').value.trim();
-        
-        if (!name || !text) return;
+        const nameInput = document.getElementById('guestName');
+        const textInput = document.getElementById('guestMessage');
 
-        const now = new Date();
-        const time = now.toLocaleDateString('fa-IR');
-
-        messages.push({ name, text, time });
-        setData('reza_messages', messages);
-        
-        document.getElementById('guestName').value = '';
-        document.getElementById('guestMessage').value = '';
-        
-        renderMessages();
-        showToast('پیامت ثبت شد! 🎉');
+        if (guestbook.addMessage(nameInput.value, textInput.value)) {
+            nameInput.value = '';
+            textInput.value = '';
+            renderGuestbook();
+        }
     });
 
-    renderMessages();
+    renderGuestbook();
 </script>
 ```
 
